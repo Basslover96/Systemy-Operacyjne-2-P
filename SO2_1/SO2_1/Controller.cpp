@@ -1,24 +1,11 @@
 #include "Controller.h"
 
-
-void Controller::initialization()
-{
-	initscr();
-	cbreak();
-	start_color();
-	noecho();
-	getmaxyx(stdscr, winHeight, winWidth);
-	winStartX = winStartY = 0;
-	win = newwin(winHeight - 10, winWidth, winStartY, winStartX);
-	refresh();
-}
-
-void Controller::createBorder()
+void Controller::createBorder() const
 {
 	box(win, 0, 0);
 }
 
-void Controller::createFeeder()
+void Controller::createFeeder() const
 {
 	move(winHeight - 15, 1);
 	hline(0, 118);
@@ -29,28 +16,27 @@ void Controller::createFeeder()
 	}
 }
 
-void Controller::chickenTest()
-{
-	mvwprintw(win, 2, 6, "__//");
-	mvwprintw(win, 3, 5, "/.__.\\");
-	mvwprintw(win, 4, 5, "\\ \\/ /");
-	mvwprintw(win, 5, 2, "'__/    \\");
-	mvwprintw(win, 6, 3, "\\-      )");
-	mvwprintw(win, 7, 4, "\\_____/");
-	mvwprintw(win, 8, 6, "|  |");
-	mvwprintw(win, 9, 6, "\"  \"");
-}
-
 Controller::Controller()
 {
-	initialization();
+	initscr();
+	cbreak();
+	start_color();
+	noecho();
+	getmaxyx(stdscr, winHeight, winWidth);
+	winStartX = winStartY = 0;
+	win = newwin(winHeight - 10, winWidth, winStartY, winStartX);
+	refresh();
 	createBorder();
 	createFeeder();
-	chickenTest();
 }
 
 
 Controller::~Controller()
 {
 	endwin();
+}
+
+WINDOW * Controller::getWin() const
+{
+	return win;
 }

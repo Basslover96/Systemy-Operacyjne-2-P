@@ -1,8 +1,10 @@
 #include "Chicken.h"
 
-Chicken::Chicken(WINDOW * window)
+Chicken::Chicken(WINDOW * window, int leftX, int topY)
 {
 	win = window;
+	this->leftX = leftX;
+	this->topY = topY;
 }
 
 Chicken::~Chicken()
@@ -11,12 +13,12 @@ Chicken::~Chicken()
 
 void Chicken::chickenTest()
 {
-	mvwprintw(win, 2, 6, "__//");
-	mvwprintw(win, 3, 5, "/.__.\\");
-	mvwprintw(win, 4, 5, "\\ \\/ /");
-	mvwprintw(win, 5, 2, "'__/    \\");
-	mvwprintw(win, 6, 3, "\\-      )");
-	mvwprintw(win, 7, 4, "\\_____/");
-	mvwprintw(win, 8, 6, "|  |");
-	mvwprintw(win, 9, 6, "\"  \"");
+	mvwprintw(win, topY, leftX + 4, "__//");
+	mvwprintw(win, topY + 1, leftX + 3, "/.__.\\");
+	mvwprintw(win, topY + 2, leftX + 3, "\\ \\/ /");
+	mvwprintw(win, topY + 3, leftX, "'__/    \\");
+	mvwprintw(win, topY + 4, leftX + 1, "\\-      )");
+	mvwprintw(win, topY + 5, leftX + 2, "\\_____/");
+	mvwprintw(win, topY + 6, leftX + 4, "|  |");
+	mvwprintw(win, topY + 7, leftX + 4, "\"  \"");
 }

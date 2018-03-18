@@ -4,9 +4,10 @@
 class Chicken
 {
 private:
+	int leftX, topY;
 	WINDOW * win;
 public:
-	Chicken(WINDOW * window);
+	Chicken(WINDOW * window, int leftX, int topY);
 	~Chicken();
 	void chickenTest();
 };

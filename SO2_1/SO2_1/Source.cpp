@@ -5,7 +5,7 @@
 
 int main(int argc, char ** argv) {
 	Controller * controller = new Controller();
-	Chicken * chicken = new Chicken(controller->getWin());
+	Chicken * chicken = new Chicken(controller->getWin(),4,4);
 	chicken->chickenTest();
 	wrefresh(controller->getWin());
 	getch();

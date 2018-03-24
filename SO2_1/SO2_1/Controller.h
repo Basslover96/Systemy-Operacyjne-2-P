@@ -5,14 +5,12 @@ class Controller
 {
 private:
 	int winHeight, winWidth, winStartX, winStartY;
-	
-	void initialization();
-	void createBorder();
-	void createFeeder();
-	void chickenTest();
-public:
 	WINDOW * win;
+	void createBorder() const;
+	void createFeeder() const;
+public:
 	Controller();
 	~Controller();
+	WINDOW * getWin() const;
 };
 

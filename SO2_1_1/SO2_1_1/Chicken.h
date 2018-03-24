@@ -2,12 +2,13 @@
 
 struct Chicken
 {
+	int id;
 	int leftX;
 	int topY;
 	short direction;
-	short move_type;
+	short event_type;
 	short colorR;
 	short colorG;
 	short colorB;
-	
+	short eat;
 };

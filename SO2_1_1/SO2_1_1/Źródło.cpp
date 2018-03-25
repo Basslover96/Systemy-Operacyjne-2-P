@@ -4,7 +4,9 @@
 #include <ctime>
 #include <cstdlib>
 #include "Chicken.h"
+#include "Player.h"
 #include <algorithm>
+#include <string>
 
 using namespace std;
 
@@ -13,15 +15,147 @@ int henhouse_height, henhouse_width;
 int feeder_height, feeder_width;
 WINDOW * henhouse;
 WINDOW * feeder;
+WINDOW * outside;
 vector<Chicken> chickens;
-const int number_of_chickens = 2;
+Player player;
+int number_of_chickens = 1;
+int moves = 10;
+int chickens_on_screen = 0;
 
+//Menu pocz¹tkowe.
+void setInitParameters()
+{
+	bool not_set = true;
+	while (not_set) {
+		clear();
+		mvprintw(0, 0, "Klawiszami strzalka w gore i strzalka w dol ustaw liczbe kurczakow. Nastepnie zatwierdz strzalka w prawo.");
+		string s = to_string(number_of_chickens);
+		char const *pchar = s.c_str();
+		mvprintw(1, 0, pchar);
+		int input = getch();
+		switch (input)
+		{
+		case KEY_UP:
+			number_of_chickens++;
+			break;
+		case KEY_DOWN:
+			if (number_of_chickens > 1)
+				number_of_chickens--;
+			break;
+		case KEY_RIGHT:
+			not_set = false;
+			break;
+		default:
+			break;
+		}
+		refresh();
+	}
+	not_set = true;
+	while (not_set) {
+		clear();
+		mvprintw(0, 0, "Klawiszami strzalka w gore i strzalka w dol ustaw liczbe ruchow. Nastepnie zatwierdz strzalka w prawo.");
+		string s = to_string(moves);
+		char const *pchar = s.c_str();
+		mvprintw(1, 0, pchar);
+		int input = getch();
+		switch (input)
+		{
+		case KEY_UP:
+			moves++;
+			break;
+		case KEY_DOWN:
+			if (moves > 1)
+				moves--;
+			break;
+		case KEY_RIGHT:
+			not_set = false;
+			break;
+		default:
+			break;
+		}
+		refresh();
+	}
+}
+
+//Funkcje dotycz¹ce gracza.
+void generatePlayer()
+{
+	player.currentPosition = rand() % 5 + 1;
+	player.leftX = rand() % 113;
+	player.topY = 1;
+	player.direction = rand() % 2;
+}
+void movePlayer()
+{
+	while(chickens_on_screen>0)
+	{
+		int move = getch();
+		switch(move)
+		{
+		case KEY_LEFT:
+			player.direction = 0;
+			if (player.leftX > 0)
+				player.leftX -= 1;
+			break;
+		case KEY_RIGHT:
+			player.direction = 1;
+			if (player.leftX < 113)
+				player.leftX += 1;
+			break;
+		case KEY_UP:
+			if (player.topY > 0)
+				player.topY -= 1;
+			break;
+		case KEY_DOWN:
+			if (player.topY < 7)
+				player.topY += 1;
+			break;
+		default:
+			break;
+		}
+	}
+}
+void drawRightPlayer()
+{
+	mvwprintw(outside, player.topY, player.leftX+1, "(*_*)/");
+	mvwprintw(outside, player.topY + 1, player.leftX + 1, "<) )");
+	mvwprintw(outside, player.topY + 2, player.leftX + 1, "/  \\");
+}
+void drawLeftPlayer()
+{
+	mvwprintw(outside, player.topY, player.leftX, "\\(*_*)");
+	mvwprintw(outside, player.topY + 1, player.leftX + 1, "(  (>");
+	mvwprintw(outside, player.topY + 2, player.leftX + 1, "/  \\");
+}
+
+//Rysowanie okien.
+void drawOutside()
+{
+	init_pair(4, COLOR_WHITE, COLOR_BLACK);
+	wbkgd(outside, COLOR_PAIR(4));
+}
 void drawHenhouse()
 {
 	init_pair(2, COLOR_WHITE, COLOR_GREEN);
+	wattron(henhouse, COLOR_PAIR(2));
 	box(henhouse, 0, 0);
 	wbkgd(henhouse, COLOR_PAIR(2));
+	wattroff(henhouse, COLOR_PAIR(2));
 }
+void drawFeeder()
+{
+	getmaxyx(feeder, feeder_height, feeder_width);
+	init_pair(3, COLOR_WHITE, COLOR_YELLOW);
+	box(feeder, 0, 0);
+	wbkgd(feeder, COLOR_PAIR(3));
+	for (int i = 1; i < 5; i++)
+	{
+		wmove(feeder, 1, i * 24);
+		wvline(feeder, 0, 2);
+	}
+};
+
+//Funkcje dotycz¹ce kurczaków.
 void generateChickens()
 {
 	getmaxyx(henhouse, henhouse_height, henhouse_width);
@@ -32,15 +166,13 @@ void generateChickens()
 		chickens[chickens.size()-1].event_type = 0;
 		chickens[chickens.size()-1].topY = rand() % (henhouse_height - 13) + 1;
 		chickens[chickens.size()-1].leftX = rand() % (henhouse_width - 11) + 1;
-		chickens[chickens.size() - 1].colorR = rand() % 998 + 1;
-		chickens[chickens.size() - 1].colorG = rand() % 998 + 1;
-		chickens[chickens.size() - 1].colorB = rand() % 998 + 1;
+		chickens[chickens.size() - 1].moves = moves;
+		chickens[chickens.size() - 1].isVisible = true;
 	}
+	chickens_on_screen = number_of_chickens;
 }
 void drawLeftChicken(Chicken chicken)
 {
-	init_color(COLOR_RED, chicken.colorR, chicken.colorB, chicken.colorB);
-	init_pair(1, COLOR_BLUE, COLOR_BLACK);
 	mvwprintw(henhouse, chicken.topY, chicken.leftX + 2, "\\\\__");
 	mvwprintw(henhouse, chicken.topY + 1, chicken.leftX + 1, "/.__.\\");
 	mvwprintw(henhouse, chicken.topY + 2, chicken.leftX + 1, "\\ \\/ /");
@@ -49,13 +181,9 @@ void drawLeftChicken(Chicken chicken)
 	mvwprintw(henhouse, chicken.topY + 5, chicken.leftX + 1, "\\____/");
 	mvwprintw(henhouse, chicken.topY + 6, chicken.leftX + 2, "|  |");
 	mvwprintw(henhouse, chicken.topY + 7, chicken.leftX + 2, "\"  \"");
-	attroff(COLOR_PAIR(1));
 }
 void drawRightChicken(Chicken chicken)
 {
-	init_color(COLOR_RED, chicken.colorR, chicken.colorB, chicken.colorB);
-	init_pair(1, COLOR_RED, COLOR_BLACK);
-	attron(COLOR_PAIR(1));
 	mvwprintw(henhouse, chicken.topY, chicken.leftX + 4, "__//");
 	mvwprintw(henhouse, chicken.topY + 1, chicken.leftX + 3, "/.__.\\");
 	mvwprintw(henhouse, chicken.topY + 2, chicken.leftX + 3, "\\ \\/ /");
@@ -64,22 +192,8 @@ void drawRightChicken(Chicken chicken)
 	mvwprintw(henhouse, chicken.topY + 5, chicken.leftX + 2, "\\_____/");
 	mvwprintw(henhouse, chicken.topY + 6, chicken.leftX + 4, "|  |");
 	mvwprintw(henhouse, chicken.topY + 7, chicken.leftX + 4, "\"  \"");
-	attroff(COLOR_PAIR(1));
 }
-void drawFeeder()
-{
-	getmaxyx(feeder, feeder_height, feeder_width);
-	init_pair(3, COLOR_WHITE, COLOR_YELLOW);
-	box(feeder, 0, 0);
-	wbkgd(feeder,COLOR_PAIR(3));
-	for (int i = 1; i < 5; i++)
-	{
-		wmove(feeder, 1, i * 24);
-		wvline(feeder,0, 2);
-	}
-};
-
-short checkEvent(Chicken &chicken)
+short checkEvent(Chicken chicken)
 {
 	if(chicken.direction==0)
 	{
@@ -97,15 +211,15 @@ short checkEvent(Chicken &chicken)
 	if (chicken.topY == (henhouse_height - 13)) return 4;
 	return 0;
 }
-
 void removeChicken(std::vector<Chicken> & chickens, int id)
 {
 	chickens.erase(remove_if(chickens.begin(), chickens.end(), [&](Chicken const & chicken) {return chicken.id == id; }), chickens.end());
 }
-
-void moveChicken(Chicken &chicken)
+void moveChicken(Chicken& chicken)
 {
-	while (chicken.eat > 0) {
+	while (chicken.moves > 0) {
+	
+		chicken.moves--;
 		chicken.event_type = checkEvent(chicken);
 		switch (chicken.event_type)
 		{
@@ -169,65 +283,94 @@ void moveChicken(Chicken &chicken)
 			chicken.topY -= rand() % 2;
 			break;
 		}
-		this_thread::sleep_for(std::chrono::microseconds(10));
+		if (chicken.moves == 0) {
+			chicken.isVisible = false;
+			chickens_on_screen--;
+		}
+		this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
-	removeChicken(chickens, chicken.id);
+
 }
 
+//Zarz¹dzanie oknami.
+void clearAll()
+{
+	wclear(henhouse);
+	wclear(feeder);
+	wclear(outside);
+}
+void drawAll()
+{
+	drawHenhouse();
+	drawFeeder();
+	drawOutside();
+}
+void refreshAll()
+{
+	wrefresh(henhouse);
+	wrefresh(feeder);
+	wrefresh(outside);
+}
 
-
+//G³ówna funkcja rysuj¹ca.
 void draw()
 {
 	this_thread::sleep_for(std::chrono::milliseconds(10));
-	while (chickens.size() > 0) {
-		clear();
-		refresh();
-		drawHenhouse();
-		drawFeeder();
-		for (auto chicken : chickens)
+	while (chickens_on_screen>0) {
+		clearAll();
+		drawAll();
+		for (auto &chicken : chickens)
 		{
-			if (chicken.direction == 0)
-				drawLeftChicken(chicken);
-			else
-				drawRightChicken(chicken);
+			if(!chicken.isVisible)
+				continue;
+			(chicken.direction == 0) ? drawLeftChicken(chicken) : drawRightChicken(chicken);
 		}
-		wrefresh(henhouse);
-		wrefresh(feeder);
-		this_thread::sleep_for(std::chrono::milliseconds(10));
+		(player.direction == 0) ? drawLeftPlayer() : drawRightPlayer();
+		refreshAll();
+		this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
+	clearAll();
+	drawAll();
+	refreshAll();
+	this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 int main(int argc, char ** argv)
 {	
 	srand(time(nullptr));
 	initscr();
-	cbreak();
+	curs_set(0);
+	keypad(stdscr, true);
 	start_color();
 	noecho();
+	setInitParameters();
+
 	getmaxyx(stdscr, win_height, win_width);
 	henhouse = newwin(win_height - 10, win_width, 0, 0);
-	feeder = newwin(4, win_width-2, win_height - 15, 1);
-	
+	feeder = newwin(4, win_width - 2, win_height - 15, 1);
+	outside = newwin(10, win_width, win_height - 10, 0);
+
+	generatePlayer();
 	generateChickens();
-	
+
 	thread draw_thread(draw);
+	thread player(movePlayer);
 	vector<thread> chickens_threads;
-	for (auto chicken: chickens)
+	for (int i = 0; i<chickens.size();i++)
 	{
 		this_thread::sleep_for(std::chrono::milliseconds(500));
-		chickens_threads.push_back(thread(moveChicken, &chicken));
+		chickens_threads.emplace_back(thread(moveChicken, std::ref(chickens[i])));
 	}
-
-	getch();
-
 	for(std:: thread & chicken_thread : chickens_threads)
 	{
 		if (chicken_thread.joinable())
 			chicken_thread.join();
 	}
-
+	player.join();
 	draw_thread.join();
 
+	getch();
+	keypad(stdscr, false);
 	clear();
 	endwin();
 }

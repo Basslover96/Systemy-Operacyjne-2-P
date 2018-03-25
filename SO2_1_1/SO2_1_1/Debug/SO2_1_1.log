@@ -1,41 +1,4 @@
 ﻿  Źródło.cpp
-c:\users\admin\documents\repozytoria\systemy-opreacyjne-2-p\so2_1_1\so2_1_1\źródło.cpp(202): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
-c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(240): error C2672: „std::invoke”: nie znaleziono zgodnej przeciążonej funkcji
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(248): note: zobacz odwołanie do funkcji szablon; wystąpienie „void std::_LaunchPad<_Target>::_Execute<0,1>(std::tuple<void (__cdecl *)(Chicken &),Chicken *> &,std::integer_sequence<_Ty,0,1>)” jest kompilowane
-          with
-          [
-              _Target=std::unique_ptr<std::tuple<void (__cdecl *)(Chicken &),Chicken *>,std::default_delete<std::tuple<void (__cdecl *)(Chicken &),Chicken *>>>,
-              _Ty=::size_t
-          ]
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(247): note: zobacz odwołanie do funkcji szablon; wystąpienie „void std::_LaunchPad<_Target>::_Execute<0,1>(std::tuple<void (__cdecl *)(Chicken &),Chicken *> &,std::integer_sequence<_Ty,0,1>)” jest kompilowane
-          with
-          [
-              _Target=std::unique_ptr<std::tuple<void (__cdecl *)(Chicken &),Chicken *>,std::default_delete<std::tuple<void (__cdecl *)(Chicken &),Chicken *>>>,
-              _Ty=::size_t
-          ]
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(244): note: podczas kompilowania funkcji składowej „<Nieznany>” klasy klasa <Nieznany>
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(232): note: zobacz odwołanie do funkcji szablon; wystąpienie „void std::_LaunchPad<_Target>::_Run(std::_LaunchPad<_Target> *) noexcept” jest kompilowane
-          with
-          [
-              _Target=std::unique_ptr<std::tuple<void (__cdecl *)(Chicken &),Chicken *>,std::default_delete<std::tuple<void (__cdecl *)(Chicken &),Chicken *>>>
-          ]
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(259): note: zobacz odwołanie do klasy klasa szablon; wystąpienie „std::_LaunchPad<_Target>” jest kompilowane
-          with
-          [
-              _Target=std::unique_ptr<std::tuple<void (__cdecl *)(Chicken &),Chicken *>,std::default_delete<std::tuple<void (__cdecl *)(Chicken &),Chicken *>>>
-          ]
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thread(45): note: zobacz odwołanie do funkcji szablon; wystąpienie „void std::_Launch<std::unique_ptr<std::tuple<void (__cdecl *)(Chicken &),Chicken *>,std::default_delete<_Ty>>>(_Thrd_t *,_Target &&)” jest kompilowane
-          with
-          [
-              _Ty=std::tuple<void (__cdecl *)(Chicken &),Chicken *>,
-              _Target=std::unique_ptr<std::tuple<void (__cdecl *)(Chicken &),Chicken *>,std::default_delete<std::tuple<void (__cdecl *)(Chicken &),Chicken *>>>
-          ]
-  c:\users\admin\documents\repozytoria\systemy-opreacyjne-2-p\so2_1_1\so2_1_1\źródło.cpp(218): note: zobacz odwołanie do funkcji szablon; wystąpienie „std::thread::thread<void(__cdecl &)(Chicken &),Chicken*,void>(_Fn,Chicken *&&)” jest kompilowane
-          with
-          [
-              _Fn=void (__cdecl &)(Chicken &)
-          ]
-c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(239): error C2893: Nie powiodła się specjalizacja szablonu funkcji 'unknown-type std::invoke(_Callable &&,_Types &&...) noexcept(<expr>)'
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(239): note: Z następującymi argumentami szablonu:
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(239): note: "_Callable=void (__cdecl *)(Chicken &)"
-  c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\thr\xthread(239): note: "_Types={Chicken *}"
+e:\so2_1_1\so2_1_1\źródło.cpp(340): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
+e:\so2_1_1\so2_1_1\źródło.cpp(359): warning C4018: "<": niezgodność typu ze znakiem/bez znaku
+  SO2_1_1.vcxproj -> E:\SO2_1_1\Debug\SO2_1_1.exe

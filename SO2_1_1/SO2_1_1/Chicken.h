@@ -7,8 +7,6 @@ struct Chicken
 	int topY;
 	short direction;
 	short event_type;
-	short colorR;
-	short colorG;
-	short colorB;
-	short eat;
+	short moves;
+	bool isVisible;
 };

@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include "Chicken.h"
 #include "Player.h"
-#include <algorithm>
 #include <string>
 
 using namespace std;
@@ -166,7 +165,7 @@ void generateChickens()
 		chickens[chickens.size()-1].event_type = 0;
 		chickens[chickens.size()-1].topY = rand() % (henhouse_height - 13) + 1;
 		chickens[chickens.size()-1].leftX = rand() % (henhouse_width - 11) + 1;
-		chickens[chickens.size() - 1].moves = moves;
+		chickens[chickens.size() - 1].moves = moves + 1;
 		chickens[chickens.size() - 1].isVisible = true;
 	}
 	chickens_on_screen = number_of_chickens;
@@ -210,10 +209,6 @@ short checkEvent(Chicken chicken)
 	if (chicken.topY == 1) return 3;
 	if (chicken.topY == (henhouse_height - 13)) return 4;
 	return 0;
-}
-void removeChicken(std::vector<Chicken> & chickens, int id)
-{
-	chickens.erase(remove_if(chickens.begin(), chickens.end(), [&](Chicken const & chicken) {return chicken.id == id; }), chickens.end());
 }
 void moveChicken(Chicken& chicken)
 {
@@ -338,29 +333,37 @@ void draw()
 int main(int argc, char ** argv)
 {	
 	srand(time(nullptr));
+	
 	initscr();
 	curs_set(0);
 	keypad(stdscr, true);
 	start_color();
 	noecho();
+	
+	//Wywo³anie menu startowego - wybór liczby kurczaków i liczby ruchów.
 	setInitParameters();
 
+	//Stworzenie okien.
 	getmaxyx(stdscr, win_height, win_width);
 	henhouse = newwin(win_height - 10, win_width, 0, 0);
 	feeder = newwin(4, win_width - 2, win_height - 15, 1);
 	outside = newwin(10, win_width, win_height - 10, 0);
 
+	//Generowanie kurczaków i gracza.
 	generatePlayer();
 	generateChickens();
 
+	//Tworzenie w¹tków.
 	thread draw_thread(draw);
 	thread player(movePlayer);
 	vector<thread> chickens_threads;
-	for (int i = 0; i<chickens.size();i++)
+	for(Chicken & chicken : chickens)
 	{
 		this_thread::sleep_for(std::chrono::milliseconds(500));
-		chickens_threads.emplace_back(thread(moveChicken, std::ref(chickens[i])));
+		chickens_threads.emplace_back(thread(moveChicken, std::ref(chicken)));
 	}
+
+	//Koñczenie pracy w¹tków.
 	for(std:: thread & chicken_thread : chickens_threads)
 	{
 		if (chicken_thread.joinable())
@@ -369,7 +372,6 @@ int main(int argc, char ** argv)
 	player.join();
 	draw_thread.join();
 
-	getch();
 	keypad(stdscr, false);
 	clear();
 	endwin();

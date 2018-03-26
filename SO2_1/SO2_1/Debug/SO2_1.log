@@ -1,5 +1,0 @@
-﻿  Chicken.cpp
-c:\users\admin\documents\repozytoria\systemy-opreacyjne-2-p\so2_1\so2_1\chicken.cpp(6): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
-  Source.cpp
-  Generowanie kodu...
-  SO2_1.vcxproj -> C:\Users\Admin\Documents\Repozytoria\Systemy-Opreacyjne-2-P\SO2_1\Debug\SO2_1.exe

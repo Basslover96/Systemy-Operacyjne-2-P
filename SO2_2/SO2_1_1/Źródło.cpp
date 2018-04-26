@@ -26,8 +26,11 @@ mutex m;
 mutex feeder_mutex;
 mutex feed_mutex;
 condition_variable cv_feeder;
+condition_variable cv_player;
 bool load_feed = false;
 bool f_pressed;
+int move_sign;
+bool end_game = false;
 
 
 //Menu pocz¹tkowe.
@@ -62,38 +65,44 @@ void setInitParameters()
 
 void loadFeed(int troughNumber)
 {
-	feed_mutex.lock();
-	eat[troughNumber] += 1;
-	feed_mutex.unlock();
-	this_thread::sleep_for(std::chrono::milliseconds(500));
-	feed_mutex.lock();
-	eat[troughNumber] += 1;
-	feed_mutex.unlock();
+	if (eat[troughNumber] == 0) {
+		feed_mutex.lock();
+		eat[troughNumber] += 1;
+		feed_mutex.unlock();
+		this_thread::sleep_for(std::chrono::milliseconds(500));
+		feed_mutex.lock();
+		eat[troughNumber] += 1;
+		feed_mutex.unlock();
+		this_thread::sleep_for(std::chrono::milliseconds(500));
+	}
 }
 void loadFeeder()
 {
-	{
+	while (!end_game) {
 		unique_lock<mutex> lk(feeder_mutex);
+		while (!load_feed)
+		{
+			cv_feeder.wait(lk);
+		};
 		load_feed = false;
-		cv_feeder.wait(lk, [] {return load_feed; });
 		if (player.leftX + 2 < 1 * 29)
-			{
-				loadFeed(0);
-			}
+		{
+			loadFeed(0);
+		}
 		else
 			if ((player.leftX + 2 > 1 * 29) && (player.leftX + 2 < 2 * 29)) {
-					loadFeed(1);
+				loadFeed(1);
 			}
 			else
 				if ((player.leftX + 2 > 2 * 29) && (player.leftX + 2 < 3 * 29))
-					{
-						loadFeed(2);
-					}
+				{
+					loadFeed(2);
+				}
 				else
 					if (player.leftX + 2 > 3 * 29)
-						{
-							loadFeed(3);
-						} 
+					{
+						loadFeed(3);
+					}
 	}
 }
 
@@ -107,10 +116,10 @@ void generatePlayer()
 }
 void movePlayer()
 {
-	while (chickens_on_screen > 0)
+	while (chickens_on_screen > 0 && !end_game)
 	{
-		int move = getch();
-		switch (move)
+		move_sign = getch();
+		switch (move_sign)
 		{
 		case KEY_LEFT:
 			player.direction = 0;
@@ -135,19 +144,27 @@ void movePlayer()
 			{
 				if (((player.leftX + 2) != 1 * 29) && ((player.leftX + 2 != 2 * 29)) && ((player.leftX + 2) != 3 * 29)) {
 					f_pressed = true;
+					move_sign = 32;
 				}
 			}
+			break;
+		case 'q': {
+			m.lock();
+			end_game = true;
+			m.unlock();
+		}
 			break;
 		default:
 			break;
 		}
-		lock_guard<mutex> lk(feeder_mutex);
-		{
-			if (f_pressed)
+		if (f_pressed) {
+			{
+				unique_lock<mutex> lk(feeder_mutex);
 				load_feed = true;
+				f_pressed = false;
+			}
+			cv_feeder.notify_one();
 		}
-		cv_feeder.notify_all();
-		f_pressed = false;
 	}
 }
 void drawRightPlayer()
@@ -166,23 +183,27 @@ void drawLeftPlayer()
 //Rysowanie okien.
 void drawOutside()
 {
-	init_pair(4, COLOR_WHITE, COLOR_BLACK);
-	wbkgd(outside, COLOR_PAIR(4));
+	init_pair(120, COLOR_WHITE, COLOR_BLACK);
+	attron(COLOR_PAIR(120));
+	wbkgd(outside, COLOR_PAIR(120));
+	attroff(COLOR_PAIR(120));
 }
 void drawHenhouse()
 {
-	init_pair(2, COLOR_WHITE, COLOR_GREEN);
-	wattron(henhouse, COLOR_PAIR(2));
+	init_pair(121, COLOR_WHITE, COLOR_GREEN);
+	wattron(henhouse, COLOR_PAIR(121));
 	box(henhouse, 0, 0);
-	wbkgd(henhouse, COLOR_PAIR(2));
-	wattroff(henhouse, COLOR_PAIR(2));
+	wbkgd(henhouse, COLOR_PAIR(121));
+	wattroff(henhouse, COLOR_PAIR(121));
 }
 void drawFeeder()
 {
 	getmaxyx(feeder, feeder_height, feeder_width);
-	init_pair(3, COLOR_WHITE, COLOR_YELLOW);
+	init_pair(122, COLOR_WHITE, COLOR_YELLOW);
+	wattron(feeder, COLOR_PAIR(122));
 	box(feeder, 0, 0);
-	wbkgd(feeder, COLOR_PAIR(3));
+	wbkgd(feeder, COLOR_PAIR(122));
+	wattroff(feeder,COLOR_PAIR(122));
 	for (int i = 1; i < 4; i++)
 	{
 		wmove(feeder, 1, i * 29);
@@ -282,60 +303,89 @@ void tryToEat(Chicken& chicken, int localizationCorrection)
 {
 	if (chicken.leftX + localizationCorrection < 29)
 	{
-		if (eat[0])
+		if (eat[0]==2)
 		{
-			m.lock();
-			eat[0] = false;
-			chicken.food += 60;
+			this_thread::sleep_for(std::chrono::milliseconds(500));
+			feed_mutex.lock();
+			eat[0] -= 1;
+			chicken.food += 30;
+			feed_mutex.unlock();
+			this_thread::sleep_for(std::chrono::milliseconds(500));
+			feed_mutex.lock();
+			eat[0] -= 1;
+			chicken.food += 30;
+			feed_mutex.unlock();
 			chicken.isHungry = false;
-			m.unlock();
 		}
 	}
 	else {
 		if (chicken.leftX + localizationCorrection >= 29 && chicken.leftX + 4 < 58)
 		{
-			if (eat[1])
+			if (eat[1]==2)
 			{
-				m.lock();
-				eat[1] = false;
-				chicken.food += 60;
+				this_thread::sleep_for(std::chrono::milliseconds(500));
+				feed_mutex.lock();
+				eat[1] -= 1;
+				chicken.food += 30;
+				feed_mutex.unlock();
+				this_thread::sleep_for(std::chrono::milliseconds(500));
+				feed_mutex.lock();
+				eat[1] -= 1;
+				chicken.food += 30;
+				feed_mutex.unlock();
 				chicken.isHungry = false;
-				m.unlock();
 			}
 		}
 		else
 			if (chicken.leftX + localizationCorrection >= 58 && chicken.leftX + 4 < 87)
 			{
-				if (eat[2])
+				if (eat[2]==2)
 				{
-					m.lock();
-					eat[2] = false;
-					chicken.food += 60;
+					this_thread::sleep_for(std::chrono::milliseconds(500));
+					feed_mutex.lock();
+					eat[2] -= 1;
+					chicken.food += 30;
+					feed_mutex.unlock();
+					this_thread::sleep_for(std::chrono::milliseconds(500));
+					feed_mutex.lock();
+					eat[2] -= 1;
+					chicken.food += 30;
+					feed_mutex.unlock();
 					chicken.isHungry = false;
-					m.unlock();
 				}
 			}
 			else
 			{
-				if (eat[3])
+				if (eat[3]==2)
 				{
-					m.lock();
-					eat[3] = false;
-					chicken.food += 60;
+					this_thread::sleep_for(std::chrono::milliseconds(500));
+					feed_mutex.lock();
+					eat[3] -= 1;
+					chicken.food += 30;
+					feed_mutex.unlock();
+					this_thread::sleep_for(std::chrono::milliseconds(500));
+					feed_mutex.lock();
+					eat[3] -= 1;
+					chicken.food += 30;
+					feed_mutex.unlock();
 					chicken.isHungry = false;
-					m.unlock();
 				}
 			}
 	}
 }
 void moveChicken(Chicken& chicken)
 {
-	while (chicken.food > 0) {
+	while (chicken.food > 0 && !end_game) {
 		if(chicken.food<40)
 		{
+			chicken.color = 1;
 			chicken.isHungry = true;
 			while (chicken.isHungry) {
 				chicken.food--;
+				if (chicken.food < 20 && chicken.color == 1)
+				{
+					chicken.color = 2;
+				}
 				if (chicken.topY < (henhouse_height - 13)) {
 					chicken.topY += 1;
 				}
@@ -353,75 +403,79 @@ void moveChicken(Chicken& chicken)
 				this_thread::sleep_for(std::chrono::milliseconds(500));
 			}
 		}
-		chicken.food--;
-		chicken.event_type = checkEvent(chicken);
-		switch (chicken.event_type)
+		else
 		{
-			//Normalny ruch
-		case 0:
-			if (chicken.direction == 0)
+			chicken.color = 0;
+			chicken.food--;
+			chicken.event_type = checkEvent(chicken);
+			switch (chicken.event_type)
 			{
-				chicken.leftX -= rand() % 2;
-				chicken.topY += rand() % 3 - 1;
-			}
-			else
-			{
+				//Normalny ruch
+			case 0:
+				if (chicken.direction == 0)
+				{
+					chicken.leftX -= rand() % 2;
+					chicken.topY += rand() % 3 - 1;
+				}
+				else
+				{
+					chicken.leftX += rand() % 2;
+					chicken.topY += rand() % 3 - 1;
+				}
+				break;
+				//Lewa krawêdŸ
+			case 1:
+				chicken.direction = 1;
 				chicken.leftX += rand() % 2;
 				chicken.topY += rand() % 3 - 1;
+				break;
+				//Prawa krawêdŸ
+			case 2:
+				chicken.direction = 0;
+				chicken.leftX -= rand() % 2;
+				chicken.topY += rand() % 3 - 1;
+				break;
+				//Górna krawêdŸ
+			case 3:
+				chicken.direction == 0 ? chicken.leftX -= rand() % 2 : chicken.leftX += rand() % 2;
+				chicken.topY += rand() % 2;
+				break;
+				//Dolna krawêdŸ
+			case 4:
+				chicken.direction == 0 ? chicken.leftX -= rand() % 2 : chicken.leftX += rand() % 2;
+				chicken.topY -= rand() % 2;
+				break;
+				//Lewy górny róg
+			case 5:
+				chicken.direction = 1;
+				chicken.leftX += rand() % 2;
+				chicken.topY += rand() % 2;
+				break;
+				//Prawy górny róg
+			case 6:
+				chicken.direction = 0;
+				chicken.leftX -= rand() % 2;
+				chicken.topY += rand() % 2;
+				break;
+				//Lewy dolny róg
+			case 7:
+				chicken.direction = 1;
+				chicken.leftX += rand() % 2;
+				chicken.topY -= rand() % 2;
+				break;
+				//Prawy dolny róg
+			case 8:
+				chicken.direction = 0;
+				chicken.leftX -= rand() % 2;
+				chicken.topY -= rand() % 2;
+				break;
 			}
-			break;
-			//Lewa krawêdŸ
-		case 1:
-			chicken.direction = 1;
-			chicken.leftX += rand() % 2;
-			chicken.topY += rand() % 3 - 1;
-			break;
-			//Prawa krawêdŸ
-		case 2:
-			chicken.direction = 0;
-			chicken.leftX -= rand() % 2;
-			chicken.topY += rand() % 3 - 1;
-			break;
-			//Górna krawêdŸ
-		case 3:
-			chicken.direction == 0 ? chicken.leftX -= rand() % 2 : chicken.leftX += rand() % 2;
-			chicken.topY += rand() % 2;
-			break;
-			//Dolna krawêdŸ
-		case 4:
-			chicken.direction == 0 ? chicken.leftX -= rand() % 2 : chicken.leftX += rand() % 2;
-			chicken.topY -= rand() % 2;
-			break;
-			//Lewy górny róg
-		case 5:
-			chicken.direction = 1;
-			chicken.leftX += rand() % 2;
-			chicken.topY += rand() % 2;
-			break;
-			//Prawy górny róg
-		case 6:
-			chicken.direction = 0;
-			chicken.leftX -= rand() % 2;
-			chicken.topY += rand() % 2;
-			break;
-			//Lewy dolny róg
-		case 7:
-			chicken.direction = 1;
-			chicken.leftX += rand() % 2;
-			chicken.topY -= rand() % 2;
-			break;
-			//Prawy dolny róg
-		case 8:
-			chicken.direction = 0;
-			chicken.leftX -= rand() % 2;
-			chicken.topY -= rand() % 2;
-			break;
+			if (chicken.food == 0) {
+				chicken.isVisible = false;
+				chickens_on_screen--;
+			}
+			this_thread::sleep_for(std::chrono::milliseconds(500));
 		}
-		if (chicken.food == 0) {
-			chicken.isVisible = false;
-			chickens_on_screen--;
-		}
-		this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 
 }
@@ -436,8 +490,11 @@ void clearAll()
 void drawAll()
 {
 	drawHenhouse();
+	wrefresh(henhouse);
 	drawFeeder();
-	drawOutside();
+	wrefresh(feeder);
+	drawOutside();		
+	wrefresh(outside);
 }
 void refreshAll()
 {
@@ -450,14 +507,36 @@ void refreshAll()
 void draw()
 {
 	this_thread::sleep_for(std::chrono::milliseconds(10));
-	while (chickens_on_screen>0) {
+	while (chickens_on_screen>0 && !end_game) {
 		clearAll();
 		drawAll();
 		for (auto &chicken : chickens)
 		{
 			if(!chicken.isVisible)
 				continue;
+			switch (chicken.color)
+			{
+			case 1:
+			{
+				init_pair(123, COLOR_YELLOW, COLOR_GREEN);
+				wattron(henhouse, COLOR_PAIR(123));
+			}
+			break;
+			case 2:
+			{
+				init_pair(124, COLOR_RED, COLOR_GREEN);
+				wattron(henhouse, COLOR_PAIR(124));
+			}
+			break;
+			default:
+			{
+				init_pair(125, COLOR_WHITE, COLOR_GREEN);
+				wattron(henhouse, COLOR_PAIR(125));
+			}
+			break;
+			}
 			(chicken.direction == 0) ? drawLeftChicken(chicken) : drawRightChicken(chicken);
+			wattroff(henhouse,COLOR_PAIR(chicken.id));
 		}
 		(player.direction == 0) ? drawLeftPlayer() : drawRightPlayer();
 		refreshAll();

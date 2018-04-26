@@ -10,4 +10,5 @@ struct Chicken
 	short food;
 	bool isVisible;
 	bool isHungry;
+	short color;
 };

@@ -21,8 +21,14 @@ Player player;
 int number_of_chickens = 1;
 int moves = 10;
 int chickens_on_screen = 0;
-vector<bool> eat = { false,false,false, false };
+vector<short> eat = { 0,0,0,0 };
 mutex m;
+mutex feeder_mutex;
+mutex feed_mutex;
+condition_variable cv_feeder;
+bool load_feed = false;
+bool f_pressed;
+
 
 //Menu pocz¹tkowe.
 void setInitParameters()
@@ -54,6 +60,43 @@ void setInitParameters()
 	}
 }
 
+void loadFeed(int troughNumber)
+{
+	feed_mutex.lock();
+	eat[troughNumber] += 1;
+	feed_mutex.unlock();
+	this_thread::sleep_for(std::chrono::milliseconds(500));
+	feed_mutex.lock();
+	eat[troughNumber] += 1;
+	feed_mutex.unlock();
+}
+void loadFeeder()
+{
+	{
+		unique_lock<mutex> lk(feeder_mutex);
+		load_feed = false;
+		cv_feeder.wait(lk, [] {return load_feed; });
+		if (player.leftX + 2 < 1 * 29)
+			{
+				loadFeed(0);
+			}
+		else
+			if ((player.leftX + 2 > 1 * 29) && (player.leftX + 2 < 2 * 29)) {
+					loadFeed(1);
+			}
+			else
+				if ((player.leftX + 2 > 2 * 29) && (player.leftX + 2 < 3 * 29))
+					{
+						loadFeed(2);
+					}
+				else
+					if (player.leftX + 2 > 3 * 29)
+						{
+							loadFeed(3);
+						} 
+	}
+}
+
 //Funkcje dotycz¹ce gracza.
 void generatePlayer()
 {
@@ -64,10 +107,10 @@ void generatePlayer()
 }
 void movePlayer()
 {
-	while(chickens_on_screen>0)
+	while (chickens_on_screen > 0)
 	{
 		int move = getch();
-		switch(move)
+		switch (move)
 		{
 		case KEY_LEFT:
 			player.direction = 0;
@@ -88,24 +131,23 @@ void movePlayer()
 				player.topY += 1;
 			break;
 		case 'f':
-			if(player.topY==0)
+			if (player.topY == 0)
 			{
-				if (player.leftX + 2 < 1 * 29)
-					eat[0] = true;
-				else
-					if ((player.leftX + 2 > 1 * 29) && (player.leftX + 2 < 2 * 29))
-						eat[1] = true;
-					else
-						if ((player.leftX + 2 > 2 * 29) && (player.leftX + 2 < 3 * 29))
-							eat[2] = true;
-						else
-							if (player.leftX + 2 > 3 * 29)
-								eat[3] = true;
+				if (((player.leftX + 2) != 1 * 29) && ((player.leftX + 2 != 2 * 29)) && ((player.leftX + 2) != 3 * 29)) {
+					f_pressed = true;
+				}
 			}
 			break;
 		default:
 			break;
 		}
+		lock_guard<mutex> lk(feeder_mutex);
+		{
+			if (f_pressed)
+				load_feed = true;
+		}
+		cv_feeder.notify_all();
+		f_pressed = false;
 	}
 }
 void drawRightPlayer()
@@ -146,21 +188,36 @@ void drawFeeder()
 		wmove(feeder, 1, i * 29);
 		wvline(feeder, 0, 2);
 	}
+	feed_mutex.lock();
 	for (int i = 0; i<4; i++)
 	{
-		if(eat[i])
+		if(eat[i]==1)
 		{
 			if (i < 3) {
-				mvwprintw(feeder, 1, i * 29 + 1, "****************************");
-				mvwprintw(feeder, 2, i * 29 + 1, "****************************");
+				mvwprintw(feeder, 1, i * 29 + 1, "**************");
+				mvwprintw(feeder, 2, i * 29 + 1, "**************");
 			}
 			else
 			{
-				mvwprintw(feeder, 1, i * 29 + 1, "*****************************");
-				mvwprintw(feeder, 2, i * 29 + 1, "*****************************");
+				mvwprintw(feeder, 1, i * 29 + 1, "**************");
+				mvwprintw(feeder, 2, i * 29 + 1, "**************");
 			}
 		}
+		else
+			if(eat[i]==2)
+			{
+				if (i < 3) {
+					mvwprintw(feeder, 1, i * 29 + 1, "****************************");
+					mvwprintw(feeder, 2, i * 29 + 1, "****************************");
+				}
+				else
+				{
+					mvwprintw(feeder, 1, i * 29 + 1, "*****************************");
+					mvwprintw(feeder, 2, i * 29 + 1, "*****************************");
+				}
+			}
 	}
+	feed_mutex.unlock();
 };
 
 //Funkcje dotycz¹ce kurczaków.
@@ -177,6 +234,7 @@ void generateChickens()
 		chickens[chickens.size() - 1].food = rand() % 50 + 70;
 		chickens[chickens.size() - 1].isVisible = true;
 		chickens[chickens.size() - 1].isHungry = false;
+		chickens[chickens.size() - 1].color = 0;
 	}
 	chickens_on_screen = number_of_chickens;
 }
@@ -437,6 +495,7 @@ int main(int argc, char ** argv)
 	//Tworzenie w¹tków.
 	thread draw_thread(draw);
 	thread player(movePlayer);
+	thread feeder(loadFeeder);
 	vector<thread> chickens_threads;
 	for(Chicken & chicken : chickens)
 	{
@@ -450,6 +509,7 @@ int main(int argc, char ** argv)
 		if (chicken_thread.joinable())
 			chicken_thread.join();
 	}
+	feeder.join();
 	player.join();
 	draw_thread.join();
 

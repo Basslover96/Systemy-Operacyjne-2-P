@@ -25,6 +25,7 @@ vector<short> eat = { 0,0,0,0 };
 mutex m;
 mutex feeder_mutex;
 mutex feed_mutex;
+mutex eat_mutex;
 condition_variable cv_feeder;
 condition_variable cv_player;
 bool load_feed = false;
@@ -80,29 +81,31 @@ void loadFeeder()
 {
 	while (!end_game) {
 		unique_lock<mutex> lk(feeder_mutex);
-		while (!load_feed)
+		while (!load_feed && !end_game)
 		{
 			cv_feeder.wait(lk);
 		};
 		load_feed = false;
-		if (player.leftX + 2 < 1 * 29)
-		{
-			loadFeed(0);
-		}
-		else
-			if ((player.leftX + 2 > 1 * 29) && (player.leftX + 2 < 2 * 29)) {
-				loadFeed(1);
+		if (player.topY == 0) {
+			if (player.leftX + 2 < 1 * 29)
+			{
+				loadFeed(0);
 			}
 			else
-				if ((player.leftX + 2 > 2 * 29) && (player.leftX + 2 < 3 * 29))
-				{
-					loadFeed(2);
+				if ((player.leftX + 2 > 1 * 29) && (player.leftX + 2 < 2 * 29)) {
+					loadFeed(1);
 				}
 				else
-					if (player.leftX + 2 > 3 * 29)
+					if ((player.leftX + 2 > 2 * 29) && (player.leftX + 2 < 3 * 29))
 					{
-						loadFeed(3);
+						loadFeed(2);
 					}
+					else
+						if (player.leftX + 2 > 3 * 29)
+						{
+							loadFeed(3);
+						}
+		}
 	}
 }
 
@@ -140,12 +143,9 @@ void movePlayer()
 				player.topY += 1;
 			break;
 		case 'f':
-			if (player.topY == 0)
-			{
-				if (((player.leftX + 2) != 1 * 29) && ((player.leftX + 2 != 2 * 29)) && ((player.leftX + 2) != 3 * 29)) {
-					f_pressed = true;
-					move_sign = 32;
-				}
+			if (((player.leftX + 2) != 1 * 29) && ((player.leftX + 2 != 2 * 29)) && ((player.leftX + 2) != 3 * 29)) {
+				f_pressed = true;
+				move_sign = 32;
 			}
 			break;
 		case 'q': {
@@ -303,37 +303,27 @@ void tryToEat(Chicken& chicken, int localizationCorrection)
 {
 	if (chicken.leftX + localizationCorrection < 29)
 	{
-		if (eat[0]==2)
+		if (eat[0] == 2)
 		{
 			this_thread::sleep_for(std::chrono::milliseconds(500));
-			feed_mutex.lock();
-			eat[0] -= 1;
-			chicken.food += 30;
-			feed_mutex.unlock();
-			this_thread::sleep_for(std::chrono::milliseconds(500));
-			feed_mutex.lock();
-			eat[0] -= 1;
-			chicken.food += 30;
-			feed_mutex.unlock();
+			eat_mutex.lock();
+			eat[0] = 0;
+			chicken.food += 60;
 			chicken.isHungry = false;
+			eat_mutex.unlock();
 		}
 	}
 	else {
 		if (chicken.leftX + localizationCorrection >= 29 && chicken.leftX + 4 < 58)
 		{
-			if (eat[1]==2)
+			if (eat[1] == 2)
 			{
 				this_thread::sleep_for(std::chrono::milliseconds(500));
-				feed_mutex.lock();
-				eat[1] -= 1;
-				chicken.food += 30;
-				feed_mutex.unlock();
-				this_thread::sleep_for(std::chrono::milliseconds(500));
-				feed_mutex.lock();
-				eat[1] -= 1;
-				chicken.food += 30;
-				feed_mutex.unlock();
+				eat_mutex.lock();
+				eat[1] = 0;
+				chicken.food += 60;
 				chicken.isHungry = false;
+				eat_mutex.unlock();
 			}
 		}
 		else
@@ -342,33 +332,23 @@ void tryToEat(Chicken& chicken, int localizationCorrection)
 				if (eat[2]==2)
 				{
 					this_thread::sleep_for(std::chrono::milliseconds(500));
-					feed_mutex.lock();
-					eat[2] -= 1;
-					chicken.food += 30;
-					feed_mutex.unlock();
-					this_thread::sleep_for(std::chrono::milliseconds(500));
-					feed_mutex.lock();
-					eat[2] -= 1;
-					chicken.food += 30;
-					feed_mutex.unlock();
+					eat_mutex.lock();
+					eat[2] = 0;
+					chicken.food += 60;
 					chicken.isHungry = false;
+					eat_mutex.unlock();
 				}
 			}
 			else
 			{
-				if (eat[3]==2)
+				if (eat[3] == 2)
 				{
 					this_thread::sleep_for(std::chrono::milliseconds(500));
-					feed_mutex.lock();
-					eat[3] -= 1;
-					chicken.food += 30;
-					feed_mutex.unlock();
-					this_thread::sleep_for(std::chrono::milliseconds(500));
-					feed_mutex.lock();
-					eat[3] -= 1;
-					chicken.food += 30;
-					feed_mutex.unlock();
+					eat_mutex.lock();
+					eat[3] = 0;
+					chicken.food += 60;
 					chicken.isHungry = false;
+					eat_mutex.unlock();
 				}
 			}
 	}
@@ -506,7 +486,6 @@ void refreshAll()
 //G³ówna funkcja rysuj¹ca.
 void draw()
 {
-	this_thread::sleep_for(std::chrono::milliseconds(10));
 	while (chickens_on_screen>0 && !end_game) {
 		clearAll();
 		drawAll();
@@ -545,19 +524,18 @@ void draw()
 	clearAll();
 	drawAll();
 	refreshAll();
-	this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 int main(int argc, char ** argv)
-{	
+{
 	srand(time(nullptr));
-	
+
 	initscr();
 	curs_set(0);
 	keypad(stdscr, true);
 	start_color();
 	noecho();
-	
+
 	//Wywo³anie menu startowego - wybór liczby kurczaków i liczby ruchów.
 	setInitParameters();
 
@@ -576,23 +554,26 @@ int main(int argc, char ** argv)
 	thread player(movePlayer);
 	thread feeder(loadFeeder);
 	vector<thread> chickens_threads;
-	for(Chicken & chicken : chickens)
+	for (Chicken & chicken : chickens)
 	{
 		this_thread::sleep_for(std::chrono::milliseconds(500));
 		chickens_threads.emplace_back(thread(moveChicken, std::ref(chicken)));
 	}
 
 	//Koñczenie pracy w¹tków.
-	for(std:: thread & chicken_thread : chickens_threads)
+	for (std::thread & chicken_thread : chickens_threads)
 	{
 		if (chicken_thread.joinable())
 			chicken_thread.join();
 	}
-	feeder.join();
+	//if (feeder.joinable()) {
+	//feeder.join();
+	//};
 	player.join();
 	draw_thread.join();
 
 	keypad(stdscr, false);
 	clear();
 	endwin();
+	exit(0);
 }

@@ -1,4 +1,4 @@
 ﻿F:\Programy\Visual Studio\Common7\IDE\VC\VCTargets\Microsoft.CppBuild.targets(391,5): warning MSB8028: Katalog pośredni (Debug\) zawiera pliki udostępnione z innego projektu (SO2_1_1.vcxproj). Może to spowodować niepoprawne zachowanie podczas oczyszczania i ponownej kompilacji.
   Źródło.cpp
-e:\repozytoria\systemy-opreacyjne-2-p\so2_2\so2_1_1\źródło.cpp(553): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
+e:\repozytoria\systemy-opreacyjne-2-p\so2_2\so2_1_1\źródło.cpp(531): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
   SO2_1_1.vcxproj -> E:\Repozytoria\Systemy-Opreacyjne-2-P\SO2_2\Debug\SO2_2.exe

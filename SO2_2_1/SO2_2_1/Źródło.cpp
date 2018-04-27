@@ -73,7 +73,7 @@ void loadFeed(int troughNumber)
 //G³ówna funkcja karmienia.
 void loadFeeder()
 {
-	while (!end_game) {
+	while (!end_game || chickens_on_screen > 0) {
 		unique_lock<mutex> lk(feeder_mutex);
 		while (!load_feed && !end_game)
 		{
@@ -100,6 +100,7 @@ void loadFeeder()
 							loadFeed(3);
 						}
 		}
+		cv_feeder.notify_one();
 	}
 }
 
@@ -115,6 +116,7 @@ void movePlayer()
 {
 	while (chickens_on_screen > 0 && !end_game)
 	{
+		unique_lock<mutex> lk(feeder_mutex);
 		move_sign = getch();
 		switch (move_sign)
 		{
@@ -151,11 +153,11 @@ void movePlayer()
 		}
 		if (f_pressed) {
 			{
-				unique_lock<mutex> lk(feeder_mutex);
 				load_feed = true;
 				f_pressed = false;
 			}
 			cv_feeder.notify_one();
+			cv_feeder.wait(lk, [] { return !load_feed; });
 		}
 	}
 }
@@ -565,9 +567,6 @@ int main(int argc, char ** argv)
 		if (chicken_thread.joinable())
 			chicken_thread.join();
 	}
-	//if (feeder.joinable()) {
-	//feeder.join();
-	//};
 	player.join();
 	draw_thread.join();
 

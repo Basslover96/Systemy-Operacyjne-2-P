@@ -180,9 +180,7 @@ void movePlayer()
 		}
 				  break;
 		case 'b': {
-			chicken_mutex.lock();
 			buyChicken();
-			chicken_mutex.unlock();
 		}
 				  break;
 		case 'q': {
@@ -218,30 +216,30 @@ void drawLeftPlayer()
 //Rysowanie okien.
 void drawOutside()
 {
-	init_pair(120, COLOR_WHITE, COLOR_BLACK);
-	attron(COLOR_PAIR(120));
-	wbkgd(outside, COLOR_PAIR(120));
+	init_pair(119, COLOR_WHITE, COLOR_BLACK);
+	attron(COLOR_PAIR(119));
+	wbkgd(outside, COLOR_PAIR(119));
 	money_mutex.lock();
 	mvwprintw(outside, 9, 5, "MONEY: %.1f          FEED PRICE: %.1f          BUY CHICKEN PRICE: %.1f          SELL CHICKEN PRICE: %.1f", money, feed_price, chicken_price, sell_chicken_price);
 	money_mutex.unlock();
-	attroff(COLOR_PAIR(120));
+	attroff(COLOR_PAIR(119));
 }
 void drawHenhouse()
 {
-	init_pair(121, COLOR_WHITE, COLOR_GREEN);
-	wattron(henhouse, COLOR_PAIR(121));
+	init_pair(120, COLOR_WHITE, COLOR_GREEN);
+	wattron(henhouse, COLOR_PAIR(120));
 	box(henhouse, 0, 0);
-	wbkgd(henhouse, COLOR_PAIR(121));
-	wattroff(henhouse, COLOR_PAIR(121));
+	wbkgd(henhouse, COLOR_PAIR(120));
+	wattroff(henhouse, COLOR_PAIR(120));
 }
 void drawFeeder()
 {
 	getmaxyx(feeder, feeder_height, feeder_width);
-	init_pair(122, COLOR_WHITE, COLOR_YELLOW);
-	wattron(feeder, COLOR_PAIR(122));
+	init_pair(121, COLOR_WHITE, COLOR_YELLOW);
+	wattron(feeder, COLOR_PAIR(121));
 	box(feeder, 0, 0);
-	wbkgd(feeder, COLOR_PAIR(122));
-	wattroff(feeder, COLOR_PAIR(122));
+	wbkgd(feeder, COLOR_PAIR(121));
+	wattroff(feeder, COLOR_PAIR(121));
 	for (int i = 1; i < 4; i++)
 	{
 		wmove(feeder, 1, i * 29);
@@ -321,7 +319,7 @@ void drawRightChicken(Chicken chicken)
 
 void sellChickens() {
 	for (int i = (chickens.size() - 1); i >= 0; i--) {
-		if (chickens[i].level >= 3) {
+		if (chickens[i].level >= 3 && chickens[i].color == 3) {
 			chickens.erase(chickens.begin() + i);
 			chickens_on_screen--;
 			money_mutex.lock();
@@ -336,8 +334,9 @@ void sellChickens() {
 	}
 }
 void buyChicken() {
+	chicken_mutex.lock();
 	chickens.emplace_back(Chicken());
-	chickens[chickens.size() - 1].id = chickens[chickens.size() - 2].id;
+	chickens[chickens.size() - 1].id = chickens[chickens.size() - 2].id + 1;
 	chickens[chickens.size() - 1].direction = rand() % 2;
 	chickens[chickens.size() - 1].event_type = 0;
 	chickens[chickens.size() - 1].topY = rand() % (henhouse_height - 13) + 1;
@@ -347,19 +346,23 @@ void buyChicken() {
 	chickens[chickens.size() - 1].color = 0;
 	chickens[chickens.size() - 1].level = 1;
 	chickens_on_screen++;
+	chicken_mutex.unlock();
 	money_mutex.lock();
 	money -= chicken_price;
 	money_mutex.unlock();
-	this_thread::sleep_for(std::chrono::milliseconds(500));
-	chickens_threads.emplace_back(thread(moveChicken, std::ref(chickens[chickens.size() - 1])));
+	for (Chicken & chicken : chickens)
+	{
+		this_thread::sleep_for(std::chrono::milliseconds(500));
+		chickens_threads.emplace_back(thread(moveChicken, std::ref(chicken)));
+	}
 }
 
-void deleteChicken(Chicken& chicken) {
+void deleteChicken(Chicken& chickenToDelete) {
 	if (chickens_on_screen == 1) {
 		chickens.clear();
 	}
 	else {
-		chickens.erase(chickens.begin() + chicken.id);
+		chickens.erase(chickens.begin() + chickenToDelete.id);
 		chickens_on_screen--;
 		int new_id = 0;
 		for (auto &chicken : chickens) {
@@ -485,7 +488,14 @@ void moveChicken(Chicken& chicken)
 		}
 		else
 		{
-			chicken.color = 0;
+			if(chicken.level>=3)
+			{
+				chicken.color = 3;
+			}
+			else
+			{
+				chicken.color = 0;
+			}
 			chicken.food--;
 			chicken.event_type = checkEvent(chicken);
 			switch (chicken.event_type)
@@ -598,13 +608,19 @@ void draw()
 			{
 			case 1:
 			{
-				init_pair(123, COLOR_YELLOW, COLOR_GREEN);
-				wattron(henhouse, COLOR_PAIR(123));
+				init_pair(122, COLOR_YELLOW, COLOR_GREEN);
+				wattron(henhouse, COLOR_PAIR(122));
 			}
 			break;
 			case 2:
 			{
-				init_pair(124, COLOR_RED, COLOR_GREEN);
+				init_pair(123, COLOR_RED, COLOR_GREEN);
+				wattron(henhouse, COLOR_PAIR(123));
+			}
+			break;
+			case 3:
+			{
+				init_pair(124, COLOR_BLUE, COLOR_GREEN);
 				wattron(henhouse, COLOR_PAIR(124));
 			}
 			break;
@@ -656,7 +672,7 @@ int main(int argc, char ** argv)
 	thread draw_thread(draw);
 	thread player(movePlayer);
 	thread feeder(loadFeeder);
-	thread setPrices(setPrices);
+	thread setAllPrices(setPrices);
 	for (Chicken & chicken : chickens)
 	{
 		this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -671,7 +687,7 @@ int main(int argc, char ** argv)
 		if (chicken_thread.joinable())
 			chicken_thread.join();
 	}
-	setPrices.join();
+	setAllPrices.join();
 	player.join();
 	draw_thread.join();
 

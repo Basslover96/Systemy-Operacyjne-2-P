@@ -1,4 +1,4 @@
 ﻿  Źródło.cpp
-e:\repozytoria\systemy-opreacyjne-2-p\so2_3\so2_3\źródło.cpp(123): warning C4244: "return": konwersja z "double" do "float", możliwa utrata danych
-e:\repozytoria\systemy-opreacyjne-2-p\so2_3\so2_3\źródło.cpp(634): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
-  SO2_3.vcxproj -> E:\Repozytoria\Systemy-Opreacyjne-2-P\SO2_3\Debug\SO2_3.exe
+c:\users\admin\documents\repozytoria\systemy-opreacyjne-2-p\so2_3\so2_3\źródło.cpp(123): warning C4244: "return": konwersja z "double" do "float", możliwa utrata danych
+c:\users\admin\documents\repozytoria\systemy-opreacyjne-2-p\so2_3\so2_3\źródło.cpp(650): warning C4244: "argument": konwersja z "time_t" do "unsigned int", możliwa utrata danych
+  SO2_3.vcxproj -> C:\Users\Admin\Documents\Repozytoria\Systemy-Opreacyjne-2-P\SO2_3\Debug\SO2_3.exe

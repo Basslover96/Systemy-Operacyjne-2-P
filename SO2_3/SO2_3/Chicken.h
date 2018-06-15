@@ -11,4 +11,5 @@ struct Chicken
 	bool isHungry;
 	short color;
 	short level;
+	bool isVisible;
 };

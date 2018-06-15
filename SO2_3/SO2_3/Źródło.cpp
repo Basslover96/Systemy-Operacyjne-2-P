@@ -6,6 +6,7 @@
 #include "Player.h"
 #include <string>
 #include <mutex>
+#include <atomic>
 
 using namespace std;
 
@@ -17,7 +18,7 @@ WINDOW * feeder;
 WINDOW * outside;
 vector<Chicken> chickens;
 Player player;
-int number_of_chickens = 1;
+int number_of_chickens = 5;
 int moves = 10;
 int chickens_on_screen = 0;
 vector<short> eat = { 0,0,0,0 };
@@ -33,44 +34,14 @@ bool end_game = false;
 float money = 1000;
 float chicken_price = 100;
 float feed_price = 20;
-float sell_chicken_price = 200;
+float sell_chicken_price = 200; \
+atomic_bool buy = false;
 
 vector<thread> chickens_threads;
-
 
 void sellChickens();
 void buyChicken();
 void moveChicken(Chicken& chicken);
-
-//Menu pocz¹tkowe.
-void setInitParameters()
-{
-	bool not_set = true;
-	while (not_set) {
-		clear();
-		mvprintw(0, 0, "Klawiszami strzalka w gore i strzalka w dol ustaw liczbe kurczakow. Nastepnie zatwierdz strzalka w prawo.");
-		string s = to_string(number_of_chickens);
-		char const *pchar = s.c_str();
-		mvprintw(1, 0, pchar);
-		int input = getch();
-		switch (input)
-		{
-		case KEY_UP:
-			number_of_chickens++;
-			break;
-		case KEY_DOWN:
-			if (number_of_chickens > 1)
-				number_of_chickens--;
-			break;
-		case KEY_RIGHT:
-			not_set = false;
-			break;
-		default:
-			break;
-		}
-		refresh();
-	}
-}
 
 //Nape³nienie koryta pasz¹.
 void loadFeed(int troughNumber)
@@ -85,7 +56,7 @@ void loadFeed(int troughNumber)
 //G³ówna funkcja karmienia.
 void loadFeeder()
 {
-	while (!end_game || chickens_on_screen > 0) {
+	while (!end_game && (chickens_on_screen > 0 || money>chicken_price)) {
 		unique_lock<mutex> lk(feeder_mutex);
 		while (!load_feed && !end_game)
 		{
@@ -125,12 +96,17 @@ float changePrice(float price) {
 
 //Aktualizacja cen
 void setPrices() {
-	this_thread::sleep_for(std::chrono::seconds(20));
-	money_mutex.lock();
-	chicken_price = changePrice(chicken_price);
-	sell_chicken_price = changePrice(sell_chicken_price);
-	feed_price = changePrice(feed_price);
-	money_mutex.unlock();
+	while ((chickens_on_screen > 0 || money>chicken_price) && !end_game) {
+		this_thread::sleep_for(std::chrono::seconds(20));
+		money_mutex.lock();
+		chicken_price = changePrice(chicken_price);
+		if (chicken_price < 70) chicken_price = 70;
+		sell_chicken_price = changePrice(sell_chicken_price);
+		if (sell_chicken_price < 160) sell_chicken_price = 160;
+		feed_price = changePrice(feed_price);
+		if (feed_price < 10) feed_price = 10;
+		money_mutex.unlock();
+	}
 }
 
 //Funkcje dotycz¹ce gracza.
@@ -143,7 +119,7 @@ void generatePlayer()
 }
 void movePlayer()
 {
-	while (chickens_on_screen > 0 && !end_game)
+	while ((chickens_on_screen > 0 || money>chicken_price) && !end_game)
 	{
 		unique_lock<mutex> lk(feeder_mutex);
 		move_sign = getch();
@@ -168,7 +144,7 @@ void movePlayer()
 				player.topY += 1;
 			break;
 		case 'f':
-			if (((player.leftX + 2) != 1 * 29) && ((player.leftX + 2 != 2 * 29)) && ((player.leftX + 2) != 3 * 29)) {
+			if (((player.leftX + 2) != 1 * 29) && ((player.leftX + 2 != 2 * 29)) && ((player.leftX + 2) != 3 * 29) && (money>feed_price)) {
 				f_pressed = true;
 				move_sign = 32;
 			}
@@ -180,7 +156,11 @@ void movePlayer()
 		}
 				  break;
 		case 'b': {
-			buyChicken();
+			if (money > chicken_price) {
+				chicken_mutex.lock();
+				buyChicken();
+				chicken_mutex.unlock();
+			}
 		}
 				  break;
 		case 'q': {
@@ -279,17 +259,21 @@ void drawFeeder()
 void generateChickens()
 {
 	getmaxyx(henhouse, henhouse_height, henhouse_width);
-	for (int i = 0; i < number_of_chickens; i++) {
+	for (int i = 0; i < 100; i++) {
 		chickens.emplace_back(Chicken());
-		chickens[chickens.size() - 1].id = i;
-		chickens[chickens.size() - 1].direction = rand() % 2;
-		chickens[chickens.size() - 1].event_type = 0;
-		chickens[chickens.size() - 1].topY = rand() % (henhouse_height - 13) + 1;
-		chickens[chickens.size() - 1].leftX = rand() % (henhouse_width - 11) + 1;
-		chickens[chickens.size() - 1].food = rand() % 50 + 70;
-		chickens[chickens.size() - 1].isHungry = false;
-		chickens[chickens.size() - 1].color = 0;
-		chickens[chickens.size() - 1].level = 1;
+		chickens[i].id = i;
+		chickens[i].direction = rand() % 2;
+		chickens[i].event_type = 0;
+		chickens[i].topY = rand() % (henhouse_height - 13) + 1;
+		chickens[i].leftX = rand() % (henhouse_width - 11) + 1;
+		chickens[i].food = rand() % 50 + 70;
+		chickens[i].isHungry = false;
+		chickens[i].color = 0;
+		chickens[i].level = 1;
+		if(i<number_of_chickens)
+		chickens[i].isVisible = true;
+		else
+		chickens[i].isVisible = false;
 	}
 	chickens_on_screen = number_of_chickens;
 }
@@ -304,6 +288,7 @@ void drawLeftChicken(Chicken chicken)
 	mvwprintw(henhouse, chicken.topY + 5, chicken.leftX + 1, "\\____/");
 	mvwprintw(henhouse, chicken.topY + 6, chicken.leftX + 2, "|  |");
 	mvwprintw(henhouse, chicken.topY + 7, chicken.leftX + 2, "\"  \"");
+	mvwprintw(henhouse, chicken.topY + 7, chicken.leftX + 3, "%d",chicken.food);
 }
 void drawRightChicken(Chicken chicken)
 {
@@ -315,61 +300,46 @@ void drawRightChicken(Chicken chicken)
 	mvwprintw(henhouse, chicken.topY + 5, chicken.leftX + 2, "\\_____/");
 	mvwprintw(henhouse, chicken.topY + 6, chicken.leftX + 4, "|  |");
 	mvwprintw(henhouse, chicken.topY + 7, chicken.leftX + 4, "\"  \"");
+	mvwprintw(henhouse, chicken.topY + 7, chicken.leftX + 5, "%d", chicken.food);
 }
 
 void sellChickens() {
-	for (int i = (chickens.size() - 1); i >= 0; i--) {
-		if (chickens[i].level >= 3 && chickens[i].color == 3) {
-			chickens.erase(chickens.begin() + i);
+	for (int i = 0; i < number_of_chickens; i++) {
+		if (chickens[i].level >= 3 && chickens[i].color == 3 && chickens[i].isVisible) {
+			chickens[i].isVisible = false;
 			chickens_on_screen--;
 			money_mutex.lock();
 			money += sell_chicken_price;
 			money_mutex.unlock();
 		}
 	}
-	int new_id = 0;
-	for (auto &chicken : chickens) {
-		chicken.id = new_id;
-		new_id++;
-	}
 }
 void buyChicken() {
-	chicken_mutex.lock();
-	chickens.emplace_back(Chicken());
-	chickens[chickens.size() - 1].id = chickens[chickens.size() - 2].id + 1;
-	chickens[chickens.size() - 1].direction = rand() % 2;
-	chickens[chickens.size() - 1].event_type = 0;
-	chickens[chickens.size() - 1].topY = rand() % (henhouse_height - 13) + 1;
-	chickens[chickens.size() - 1].leftX = rand() % (henhouse_width - 11) + 1;
-	chickens[chickens.size() - 1].food = rand() % 50 + 70;
-	chickens[chickens.size() - 1].isHungry = false;
-	chickens[chickens.size() - 1].color = 0;
-	chickens[chickens.size() - 1].level = 1;
-	chickens_on_screen++;
-	chicken_mutex.unlock();
-	money_mutex.lock();
-	money -= chicken_price;
-	money_mutex.unlock();
-	for (Chicken & chicken : chickens)
-	{
-		this_thread::sleep_for(std::chrono::milliseconds(500));
-		chickens_threads.emplace_back(thread(moveChicken, std::ref(chicken)));
-	}
-}
-
-void deleteChicken(Chicken& chickenToDelete) {
-	if (chickens_on_screen == 1) {
-		chickens.clear();
-	}
-	else {
-		chickens.erase(chickens.begin() + chickenToDelete.id);
-		chickens_on_screen--;
-		int new_id = 0;
-		for (auto &chicken : chickens) {
-			chicken.id = new_id;
-			new_id++;
+	int index=-1;
+	for (int i = 0; i < 100; i++) {
+		if (!chickens[i].isVisible) {
+			chickens[i].direction = rand() % 2;
+			chickens[i].event_type = 0;
+			chickens[i].topY = rand() % (henhouse_height - 13) + 1;
+			chickens[i].leftX = rand() % (henhouse_width - 11) + 1;
+			chickens[i].food = rand() % 50 + 70;
+			chickens[i].isHungry = false;
+			chickens[i].color = 0;
+			chickens[i].level = 1;
+			chickens[i].isVisible = true;
+			chickens_on_screen++;
+			number_of_chickens++;
+			money_mutex.lock();
+			money -= chicken_price;
+			money_mutex.unlock();
+			index = i;
+			break;
 		}
 	}
+	
+	if(index!=-1)
+	chickens_threads.emplace_back(thread(moveChicken, std::ref(chickens[index])));
+
 }
 
 short checkEvent(Chicken chicken)
@@ -455,7 +425,7 @@ void tryToEat(Chicken& chicken, int localizationCorrection)
 }
 void moveChicken(Chicken& chicken)
 {
-	while (chicken.food > 0 && !end_game) {
+	while (chicken.isVisible && !end_game) {
 		if (chicken.food<40)
 		{
 			chicken.color = 1;
@@ -479,9 +449,8 @@ void moveChicken(Chicken& chicken)
 					m.unlock();
 				}
 				if (chicken.food == 0) {
-					chicken_mutex.lock();
-					deleteChicken(chicken);
-					chicken_mutex.unlock();
+					chicken.isVisible = false;
+					chickens_on_screen--;
 				}
 				this_thread::sleep_for(std::chrono::milliseconds(500));
 			}
@@ -561,9 +530,8 @@ void moveChicken(Chicken& chicken)
 				break;
 			}
 			if (chicken.food == 0) {
-				chicken_mutex.lock();
-				deleteChicken(chicken);
-				chicken_mutex.unlock();
+				chicken.isVisible = false;
+				chickens_on_screen--;
 			}
 			this_thread::sleep_for(std::chrono::milliseconds(500));
 		}
@@ -597,43 +565,50 @@ void refreshAll()
 //G³ówna funkcja rysuj¹ca.
 void draw()
 {
-	while (chickens_on_screen>0 && !end_game) {
+	while ((chickens_on_screen>0 || money>chicken_price) && !end_game) {
 
 		clearAll();
 		drawAll();
 		chicken_mutex.lock();
-		for (auto &chicken : chickens)
+		int color_id;
+		for (int i=0; i<100;i++)
 		{
-			switch (chicken.color)
-			{
-			case 1:
-			{
-				init_pair(122, COLOR_YELLOW, COLOR_GREEN);
-				wattron(henhouse, COLOR_PAIR(122));
+			if (chickens[i].isVisible) {
+				switch (chickens[i].color)
+				{
+				case 1:
+				{
+					init_pair(122, COLOR_YELLOW, COLOR_GREEN);
+					wattron(henhouse, COLOR_PAIR(122));
+					color_id = 122;
+				}
+				break;
+				case 2:
+				{
+					init_pair(123, COLOR_RED, COLOR_GREEN);
+					wattron(henhouse, COLOR_PAIR(123));
+					color_id = 123;
+				}
+				break;
+				case 3:
+				{
+					init_pair(124, COLOR_BLUE, COLOR_GREEN);
+					wattron(henhouse, COLOR_PAIR(124));
+					color_id = 124;
+				}
+				break;
+				default:
+				{
+					init_pair(125, COLOR_WHITE, COLOR_GREEN);
+					wattron(henhouse, COLOR_PAIR(125));
+					color_id = 125;
+				}
+				break;
+				}
+				//Rysowanie kurczaka.
+				(chickens[i].direction == 0) ? drawLeftChicken(chickens[i]) : drawRightChicken(chickens[i]);
+				wattroff(henhouse, COLOR_PAIR(color_id));
 			}
-			break;
-			case 2:
-			{
-				init_pair(123, COLOR_RED, COLOR_GREEN);
-				wattron(henhouse, COLOR_PAIR(123));
-			}
-			break;
-			case 3:
-			{
-				init_pair(124, COLOR_BLUE, COLOR_GREEN);
-				wattron(henhouse, COLOR_PAIR(124));
-			}
-			break;
-			default:
-			{
-				init_pair(125, COLOR_WHITE, COLOR_GREEN);
-				wattron(henhouse, COLOR_PAIR(125));
-			}
-			break;
-			}
-			//Rysowanie kurczaka.
-			(chicken.direction == 0) ? drawLeftChicken(chicken) : drawRightChicken(chicken);
-			wattroff(henhouse, COLOR_PAIR(chicken.id));
 		}
 		chicken_mutex.unlock();
 		(player.direction == 0) ? drawLeftPlayer() : drawRightPlayer();
@@ -641,7 +616,20 @@ void draw()
 		this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 	clearAll();
+	money = 0;
+	chicken_price = 0;
+	sell_chicken_price = 0;
+	feed_price = 0;
 	drawAll();
+	refreshAll();
+	mvwprintw(outside, 0, 13, "  /$$$$$$   /$$$$$$  /$$      /$$ /$$$$$$$$        /$$$$$$  /$$    /$$ /$$$$$$$$ /$$$$$$$  /$$");
+	mvwprintw(outside, 1, 13, " /$$__  $$ /$$__  $$| $$$    /$$$| $$_____/       /$$__  $$| $$   | $$| $$_____/| $$__  $$| $$");
+	mvwprintw(outside, 2, 13, "| $$  \\__/| $$  \\ $$| $$$$  /$$$$| $$            | $$  \\ $$| $$   | $$| $$      | $$  \\ $$| $$");
+	mvwprintw(outside, 3, 13, "| $$ /$$$$| $$$$$$$$| $$ $$/$$ $$| $$$$$         | $$  | $$|  $$ / $$/| $$$$$   | $$$$$$$/| $$");
+	mvwprintw(outside, 4, 13, "| $$|_  $$| $$__  $$| $$  $$$| $$| $$__/         | $$  | $$ \\  $$ $$/ | $$__/   | $$__  $$|__/");
+	mvwprintw(outside, 5, 13, "| $$  \\ $$| $$  | $$| $$\\  $ | $$| $$            | $$  | $$  \\  $$$/  | $$      | $$  \\ $$");
+	mvwprintw(outside, 6, 13, "|  $$$$$$/| $$  | $$| $$ \\/  | $$| $$$$$$$$      |  $$$$$$/   \\  $/   | $$$$$$$$| $$  | $$ /$$");
+	mvwprintw(outside, 7, 13, " \\______/ |__/  |__/|__/     |__/|________/       \\______/     \\_/    |________/|__/  |__/|__/");
 	refreshAll();
 }
 
@@ -655,9 +643,6 @@ int main(int argc, char ** argv)
 	start_color();
 	noecho();
 
-	//Wywo³anie menu startowego - wybór liczby kurczaków i liczby ruchów.
-	setInitParameters();
-
 	//Stworzenie okien.
 	getmaxyx(stdscr, win_height, win_width);
 	henhouse = newwin(win_height - 10, win_width, 0, 0);
@@ -668,18 +653,18 @@ int main(int argc, char ** argv)
 	generatePlayer();
 	generateChickens();
 
+	chickens_threads.reserve(100);
+
 	//Tworzenie w¹tków.
 	thread draw_thread(draw);
 	thread player(movePlayer);
 	thread feeder(loadFeeder);
 	thread setAllPrices(setPrices);
-	for (Chicken & chicken : chickens)
+	for (int i = 0;i<chickens_on_screen;i++)
 	{
 		this_thread::sleep_for(std::chrono::milliseconds(500));
-		chickens_threads.emplace_back(thread(moveChicken, std::ref(chicken)));
+		chickens_threads.emplace_back(thread(moveChicken, std::ref(chickens[i])));
 	}
-
-	while (!end_game && chickens_on_screen != 0);
 
 	//Koñczenie pracy w¹tków.
 	for (std::thread & chicken_thread : chickens_threads)
@@ -688,6 +673,7 @@ int main(int argc, char ** argv)
 			chicken_thread.join();
 	}
 	setAllPrices.join();
+	feeder.join();
 	player.join();
 	draw_thread.join();
 
